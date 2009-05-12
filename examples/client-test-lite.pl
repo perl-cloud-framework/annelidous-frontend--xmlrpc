@@ -32,36 +32,54 @@ my $cli = XMLRPC::Lite->proxy('https://secure.grokthis.net/manage/vps/rpc/');
 # List methods.
 my $resp;
 
+my $username="";
+my $password="";
+my $serviceNum="";
+
 $resp = $cli->call('system.listMethods');
 print Dumper $resp->result;
 
 # Build a vm
-$resp = $cli->call('vm.new',$serviceNum);
-my $vm=$resp->result;
-print Dumper $vm;
+$resp = $cli->call('user.authenticate',$username,$password);
+my $auth=$resp->result;
+print Dumper $auth;
 
-# Build a connector (connect to the server)
-$resp = $cli->call('connector.new',$vm);
-my $conn=$resp->result;
-print Dumper $conn;
+# Build a vm
+$resp = $cli->call('user.list_vm',$auth);
+my @machines=$resp->result;
+print Dumper @machines;
 
-# Get uptime
-$resp = $cli->call('connector.uptime',$conn);
-print Dumper $resp->result;
+foreach my $vm (@machines) {
+	# Build a vm
+	$resp = $cli->call('vm.new',$auth,$vm);
+	my $vm=$resp->result;
+	print Dumper $vm;
 
-# Get status
-$resp = $cli->call('connector.status',$conn);
-print Dumper $resp->result;
+	# Build a connector (connect to the server)
+	$resp = $cli->call('connector.new',$vm);
+	my $conn=$resp->result;
+	print Dumper $conn;
 
-# Initiate boot
-$resp = $cli->call('connector.boot',$conn);
-print Dumper $resp->result;
+	# Get uptime
+	$resp = $cli->call('connector.uptime',$conn);
+	print Dumper $resp->result;
 
-# Initiate shutdown
-$resp = $cli->call('connector.shutdown',$conn);
-print Dumper $resp->result;
+	# Get status
+	$resp = $cli->call('connector.status',$conn);
+	print Dumper $resp->result;
 
-# Initiate forced shutdown (aka destroy)
-$resp = $cli->call('connector.destroy',$conn);
-print Dumper $resp->result;
+	# Initiate boot
+	$resp = $cli->call('connector.boot',$conn);
+	print Dumper $resp->result;
 
+	# Initiate shutdown
+	$resp = $cli->call('connector.shutdown',$conn);
+	print Dumper $resp->result;
+
+	print "Sleeping to give the service time to shutdown...\n";
+	sleep 30;
+
+	# Initiate forced shutdown (aka destroy)
+	$resp = $cli->call('connector.destroy',$conn);
+	print Dumper $resp->result;
+}
